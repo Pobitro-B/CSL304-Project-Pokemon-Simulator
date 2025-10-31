@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
+import time
 
 class GUIRenderer:
     def __init__(self, battle_state, placeholder_path="assets/placeholder.png"):
@@ -95,6 +96,7 @@ class GUIRenderer:
                 height=2,
                 bg="#a29bfe",
                 activebackground="#6c5ce7",
+                state=tk.DISABLED,  # start disabled until player’s turn
                 command=lambda m=move: self._select_move(m)
             )
             btn.grid(row=i // 2, column=i % 2, padx=10, pady=8)
@@ -109,12 +111,20 @@ class GUIRenderer:
         self.show_message(f"You selected {move.name}!")
 
     def wait_for_move(self):
-        """Block until player selects a move (used by game loop)."""
+        """Enable buttons and block until player selects a move."""
         self.selected_move = None
+        self._set_move_buttons_state(tk.NORMAL)
         self.show_message("Choose your move...")
+
         while self.selected_move is None:
             self.root.update()
+
+        self._set_move_buttons_state(tk.DISABLED)
         return self.selected_move
+
+    def _set_move_buttons_state(self, state):
+        for btn in self.move_buttons:
+            btn.config(state=state)
 
     def _on_resize(self, event):
         """Resize Pokémon sprites on window resize."""
@@ -140,9 +150,12 @@ class GUIRenderer:
         self.p2_hp["value"] = max(0, self.battle_state.pokemon2.current_hp)
         self.root.update_idletasks()
 
-    def show_message(self, text):
+    def show_message(self, text, delay=0.9):
+        """Display a message with an optional short delay."""
         self.message_label.config(text=text)
         self.root.update_idletasks()
+        if delay > 0:
+            time.sleep(delay)
 
     def update_turn(self, turn):
         self.turn_label.config(text=f"Turn {turn}")
