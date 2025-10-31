@@ -11,12 +11,12 @@ class PokemonSpecies:
     Holds all static properties that don't change between individual Pokémon.
     """
     def __init__(self, name: str, types: List[str], base_stats: Dict[str, int],
-                 ability: Ability, height_m: float, weight_kg: float,
+                 default_ability: Ability, height_m: float, weight_kg: float,
                  pokedex_entry: str, front_sprite: str, back_sprite: str):
         self.name = name
         self.types = types  # e.g., ['fire', 'flying']
         self.base_stats = base_stats  # e.g., {'hp': 78, 'atk': 84, ...}
-        self.ability = ability
+        self.default_ability = default_ability
         self.height_m = height_m
         self.weight_kg = weight_kg
         self.pokedex_entry = pokedex_entry
@@ -109,13 +109,13 @@ class PokemonInstance:
             print(f"{self.name} fainted!")
         return damage
 
-    def attack(self, move: Move, target: "PokemonInstance"):
+    def attack(self, move: Move, target: "PokemonInstance", battleState):
         """Perform a move against the opponent Pokémon."""
         if move not in self.moves:
             raise ValueError(f"{self.name} doesn't know {move.name}!")
-
+        #print("debug:", move.name, move.move_type, move.power, move.accuracy, move.category, move.pp, move.priority, move.effect, move.effect_chance, move.description)
         # Type multiplier (handles dual-types, STAB, etc.)
-        effectiveness = get_effectiveness( move.move_type, target.types, defender_ability=target.ability)
+        effectiveness = get_effectiveness( move.move_type, target.types)    #debug, defender_ability=target.ability)
 
         # Calculate damage using Move’s internal formula
         damage = move.calculate_damage(self, target, effectiveness)

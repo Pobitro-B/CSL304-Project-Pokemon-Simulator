@@ -41,7 +41,7 @@ class Ability:
         """Optional: react to weather changes."""
         pass
 
-    def on_end_turn(self, pokemon: "PokemonInstance"):
+    def on_end_turn(self, pokemon: "PokemonInstance", battle_state):
         """Triggered at the end of each turn."""
         pass
 

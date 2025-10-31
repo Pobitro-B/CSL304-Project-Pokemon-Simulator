@@ -1,0 +1,14 @@
+{
+    "blaze": {
+        "name": "Blaze",
+        "description": "Boosts Fire-type moves when HP is low."
+    },
+    "torrent": {
+        "name": "Torrent",
+        "description": "Boosts Water-type moves when HP is low."
+    },
+    "overgrow": {
+        "name": "Overgrow",
+        "description": "Boosts Grass-type moves when HP is low."
+    }
+}

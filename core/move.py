@@ -85,7 +85,7 @@ class Move:
         stab = 1.5 if self.move_type in attacker.species.types else 1.0
 
         # Type effectiveness (we’ll link with type chart later)
-        type_multiplier = get_effectiveness(self.move_type, defender.species.types, defender.species.ability)
+        type_multiplier = get_effectiveness(self.move_type, defender.species.types, defender.species.default_ability)
 
 
         # Random factor (0.85–1.00)

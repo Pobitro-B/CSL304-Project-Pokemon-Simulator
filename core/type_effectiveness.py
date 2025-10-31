@@ -48,7 +48,8 @@ def get_effectiveness(attack_type: str, defender_types: list[str], defender_abil
         d_type = d_type.lower()
         effectiveness = TYPE_CHART.get(attack_type, {}).get(d_type, 1.0)
         multiplier *= effectiveness
-
+    '''
+    debug
     # --- Ability-based immunities ---
     if defender_ability:
         immunity_name = defender_ability.name.lower()
@@ -62,7 +63,7 @@ def get_effectiveness(attack_type: str, defender_types: list[str], defender_abil
             return 0.0
         if immunity_name == "sap sipper" and attack_type == "grass":
             return 0.0
-
+    '''
     return multiplier
 
 

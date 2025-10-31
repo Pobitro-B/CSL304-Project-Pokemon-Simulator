@@ -1,85 +1,115 @@
 # core/battle_state.py
 
-from typing import Optional, List
+from typing import Optional, List, Dict
 from core.pokemon import PokemonInstance
 from core.move import Move
+import random
+
 
 class BattleState:
     """
-    Holds the current state of a Pokémon battle.
-    Tracks weather, turn order, field effects, and player Pokémon.
+    Represents the state of an ongoing Pokémon battle.
+    Tracks weather, field effects, active Pokémon, and turn progression.
     """
 
     def __init__(self, pokemon1: PokemonInstance, pokemon2: PokemonInstance):
         self.pokemon1 = pokemon1
         self.pokemon2 = pokemon2
         self.turn = 1
-        self.weather: Optional[str] = None  # e.g. "sunny", "rain", "sandstorm"
-        self.field_effects = {}             # spikes, terrain, screens, etc.
+
+        # Environmental factors
+        self.weather: Optional[str] = None   # e.g. "sunny", "rain", "sandstorm"
+        self.field_effects: Dict[str, any] = {}  # e.g. {"spikes": 1, "reflect": True}
+
+        # Meta info
         self.active_pokemon = [pokemon1, pokemon2]
         self.last_move: Optional[Move] = None
 
-    # --------------------------
-    # 🌦 Weather / Field Handling
-    # --------------------------
+    # --------------------------------------------------------
+    # 🌦 WEATHER HANDLING
+    # --------------------------------------------------------
     def set_weather(self, weather: Optional[str]):
-        """Change weather and notify both Pokémon abilities."""
+        """Set or clear weather and trigger related abilities."""
+        prev_weather = self.weather
         self.weather = weather
-        print(f"The weather changed to {weather or 'clear'}!")
 
+        if weather != prev_weather:
+            print(f"The weather changed to {weather or 'clear skies'}!")
+
+            # Notify all Pokémon about the weather change
+            for p in self.active_pokemon:
+                if hasattr(p.ability, "on_weather_change"):
+                    p.ability.on_weather_change(p, weather)
+
+    # --------------------------------------------------------
+    # ⚔️ TURN MANAGEMENT
+    # --------------------------------------------------------
+    def start_turn(self):
+        """Prepare start-of-turn triggers (like abilities)."""
+        print(f"\n--- Turn {self.turn} begins ---")
         for p in self.active_pokemon:
-            if hasattr(p.ability, "on_weather_change"):
-                p.ability.on_weather_change(p, weather)
+            if hasattr(p.ability, "on_turn_start"):
+                p.ability.on_turn_start(p, self)
 
-    # --------------------------
-    # ⚔️ Turn Handling
-    # --------------------------
     def next_turn(self):
-        """Increment turn counter and apply end-of-turn effects."""
-        print(f"\n--- Turn {self.turn} ends ---")
+        """End the turn, handle end-of-turn effects, increment counter."""
+        print(f"--- Turn {self.turn} ends ---\n")
         for p in self.active_pokemon:
             if hasattr(p.ability, "on_end_turn"):
-                p.ability.on_end_turn(p)
+                p.ability.on_end_turn(p, self)
         self.turn += 1
 
     def get_turn_order(self) -> List[PokemonInstance]:
-        """Return Pokémon in order of who moves first."""
+        """Determine turn order based on speed (randomized tie)."""
         p1_speed = self.pokemon1.get_stat("speed")
         p2_speed = self.pokemon2.get_stat("speed")
+
         if p1_speed == p2_speed:
-            # speed tie -> randomize
-            import random
             return random.sample(self.active_pokemon, 2)
         return sorted(self.active_pokemon, key=lambda p: p.get_stat("speed"), reverse=True)
 
-    # --------------------------
-    # 💥 Damage + Move Execution
-    # --------------------------
+    # --------------------------------------------------------
+    # 💥 MOVE EXECUTION
+    # --------------------------------------------------------
     def execute_move(self, attacker: PokemonInstance, defender: PokemonInstance, move: Move):
-        """Handles damage, type effectiveness, and applying effects."""
+        """Execute a single move with type effectiveness and ability hooks."""
+        if attacker.fainted():
+            print(f"{attacker.species.name} has fainted and cannot move!")
+            return
+
         print(f"\n{attacker.species.name} used {move.name}!")
 
+        # Check for ability-based move immunity
+        if hasattr(defender.ability, "is_move_immune") and defender.ability.is_move_immune(move):
+            print(f"It doesn’t affect {defender.species.name} due to its ability!")
+            return
+
+        # Calculate and apply damage
         damage = attacker.calculate_damage(move, defender, battle_state=self)
         defender.take_damage(damage)
-
         self.last_move = move
-        print(f"It dealt {int(damage)} damage! {defender.species.name} has {defender.current_hp}/{defender.stats['hp']} HP left.")
-        
+
+        print(f"It dealt {damage} damage!")
+        print(f"{defender.species.name} has {defender.current_hp}/{defender.stats['hp']} HP remaining.")
+
         if defender.fainted():
             print(f"{defender.species.name} fainted!")
 
-    # --------------------------
-    # 🧠 Simulation Helper
-    # --------------------------
+    # --------------------------------------------------------
+    # 🧠 TURN SIMULATION
+    # --------------------------------------------------------
     def simulate_turn(self, move1: Move, move2: Move):
-        """Simulates a full turn (both players’ moves)."""
+        """Simulate both Pokémon using one move each."""
+        self.start_turn()
         order = self.get_turn_order()
 
         for pokemon in order:
             if pokemon.fainted():
                 continue
+
             move = move1 if pokemon == self.pokemon1 else move2
             defender = self.pokemon2 if pokemon == self.pokemon1 else self.pokemon1
+
             self.execute_move(pokemon, defender, move)
 
         self.next_turn()
