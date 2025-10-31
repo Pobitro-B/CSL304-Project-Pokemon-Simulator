@@ -29,12 +29,10 @@ class BattleLoop:
         return Action(ActionType.MOVE, ai_pokemon, target = None, move=move)
 
     def choose_player_action(self, player_pokemon: PokemonInstance) -> Action:
-        """Mock player input (can be replaced with GUI buttons later)."""
-        move = random.choice(player_pokemon.moves)
-        if self.renderer:
-            self.renderer.show_message(f"You chose {move.name}!")
-            self.renderer.render_frame()
-        return Action(ActionType.MOVE, player_pokemon, target = None, move=move)
+        """Waits for the player to pick a move in the GUI."""
+        move = self.renderer.wait_for_move()
+        return Action(ActionType.MOVE, player_pokemon, target=None, move=move)
+
 
     # ---------------------------------------------------
     # TURN EXECUTION
