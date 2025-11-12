@@ -6,6 +6,8 @@ from core.move import Move
 from core.pokemon import PokemonInstance, PokemonSpecies
 from engine.action import Action, ActionType
 from engine.renderer import GUIRenderer
+from ai.minimax_agent import minimax
+from copy import deepcopy
 
 
 class BattleLoop:
@@ -20,13 +22,32 @@ class BattleLoop:
     # ACTION CHOICES
     # ---------------------------------------------------
     def choose_ai_action(self, ai_pokemon: PokemonInstance) -> Action:
-        """Basic AI that randomly picks a move."""
-        move = random.choice(ai_pokemon.moves)
+        """AI chooses the best move using minimax instead of random."""
         if self.renderer:
-            self.renderer.show_message(f"AI ({ai_pokemon.species.name}) is thinking...")
+            self.renderer.show_message(f"AI ({ai_pokemon.species.name}) is analyzing...")
             self.renderer.render_frame()
         time.sleep(0.8)
-        return Action(ActionType.MOVE, ai_pokemon, target = None, move=move)
+
+        # Perform minimax search
+        try:
+            _, best_move = minimax(
+                deepcopy(self.battle_state),
+                depth=2,                    # can tune for difficulty/speed
+                alpha=float("-inf"),
+                beta=float("inf"),
+                maximizing_player=True,
+                player_is_pokemon1=False    # since AI is usually player2
+            )
+        except Exception as e:
+            print(f"⚠️ Minimax failed: {e}")
+            best_move = None
+
+        # Fallback if minimax fails or returns None
+        if not best_move:
+            best_move = random.choice(ai_pokemon.moves)
+        best_move = next((m for m in ai_pokemon.moves if m.name == best_move.name), best_move)
+        return Action(ActionType.MOVE, ai_pokemon, target=None, move=best_move)
+
 
     def choose_player_action(self, player_pokemon: PokemonInstance) -> Action:
         """Waits for the player to pick a move in the GUI."""

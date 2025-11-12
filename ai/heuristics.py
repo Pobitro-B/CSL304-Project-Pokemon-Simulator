@@ -1,5 +1,5 @@
 from core.battle_state import BattleState
-from core.pokemon import PokemonInstance, attack
+from core.pokemon import PokemonInstance
 
 def evaluate_state(state: BattleState, player_is_pokemon1: bool = True) -> float:
     if player_is_pokemon1:

@@ -111,6 +111,7 @@ class PokemonInstance:
 
     def attack(self, move: Move, target: "PokemonInstance", battleState):
         """Perform a move against the opponent Pokémon."""
+        #debug print(self.moves, move, self.moves[0] == move, self.moves[1] == move)
         if move not in self.moves:
             raise ValueError(f"{self.name} doesn't know {move.name}!")
         #print("debug:", move.name, move.move_type, move.power, move.accuracy, move.category, move.pp, move.priority, move.effect, move.effect_chance, move.description)
