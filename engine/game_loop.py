@@ -39,7 +39,7 @@ class BattleLoop:
                 player_is_pokemon1=False    # since AI is usually player2
             )
         except Exception as e:
-            print(f"⚠️ Minimax failed: {e}")
+            print(f"Minimax failed: {e}, choosing move randomly")
             best_move = None
 
         # Fallback if minimax fails or returns None
@@ -88,13 +88,27 @@ class BattleLoop:
             self.renderer.render_frame()
             time.sleep(self.delay)
 
-            # Damage logic
-            damage = pokemon.attack(move, defender, self.battle_state)
-            defender.take_damage(move, damage)
+            # 🚨 FIX 1 — get both damage + multiplier
+            damage, effectiveness = pokemon.attack(move, defender, self.battle_state)
+
+            # 🚨 FIX 2 — remove the second damage application!
+            # defender.take_damage(move, damage)  <-- delete this
+
+            # defender.take_damage will already be called *inside* pokemon.attack()
 
             self.renderer.update_hp()
+
             self.renderer.show_message(f"It dealt {int(damage)} damage!")
             self.renderer.render_frame()
+            time.sleep(0.6)
+
+            # 🚨 FIX 3 — call effectiveness description
+            from core.type_effectiveness import describe_effectiveness
+            eff_text = describe_effectiveness(effectiveness)
+            if eff_text:
+                self.renderer.show_message(eff_text)
+                self.renderer.render_frame()
+                time.sleep(0.7)
 
             if defender.fainted():
                 self.renderer.show_message(f"{defender.species.name} fainted!")

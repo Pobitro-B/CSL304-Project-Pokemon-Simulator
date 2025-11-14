@@ -1,0 +1,7 @@
+Add good heuristic
+Make team of 3
+Add moves
+Integrate mcts
+
+Extras:
+Music, cries, expand pokemon, battle animations

@@ -4,6 +4,8 @@ import tkinter as tk
 from PIL import Image, ImageTk
 from core.pokemon import PokemonInstance, PokemonSpecies
 from core.move import Move
+import copy
+import csv
 
 class MainMenu:
     def __init__(self):
@@ -33,17 +35,21 @@ class MainMenu:
 
     # --------------------------------------------------------
     # 🧩 Load Pokémon from sprite folder
-    # --------------------------------------------------------
+    # --------------------------------------------------------  
+
     def _load_species_from_sprites(self):
         if not os.path.exists(self.sprite_dir):
             print(f"[ERROR] Sprite directory '{self.sprite_dir}' not found.")
             return []
 
+        # ---------------------------------------------------
+        # 1️⃣ Load all sprites (front/back) by Pokémon name
+        # ---------------------------------------------------
         files = [f for f in os.listdir(self.sprite_dir) if f.endswith(".png")]
         species_dict = {}
 
         for f in files:
-            # Expected format: 001_Bulbasaur_b2w2_1.png
+            # Format example: 001_Bulbasaur_b2w2_1.png
             parts = f.split("_")
             if len(parts) < 4:
                 continue
@@ -52,26 +58,80 @@ class MainMenu:
             num_part = parts[-1].replace(".png", "")
             full_path = os.path.join(self.sprite_dir, f)
 
-            # Match 1 ↔ 2 as front ↔ back
             if num_part == "1":
                 species_dict.setdefault(poke_name, {})["front"] = full_path
             elif num_part == "2":
                 species_dict.setdefault(poke_name, {})["back"] = full_path
 
-        species_pool = []
-        for name, sprites in species_dict.items():
-            if "front" in sprites and "back" in sprites:
-                stats = {"hp": 80, "atk": 80, "def": 80, "speed": 80, "spatk": 80, "spdef": 80}
-                dummy_types = ["Normal"]
-                species_pool.append(
-                    PokemonSpecies(
-                        name, dummy_types, stats, "Unknown", 1.0, 10.0,
-                        f"A wild {name} appears!",
-                        sprites["front"], sprites["back"]
-                    )
-                )
+        # ---------------------------------------------------
+        # 2️⃣ Load actual stats + types from CSV
+        # ---------------------------------------------------
+        csv_path = "data/bulbapedia_data.csv"
 
+        if not os.path.exists(csv_path):
+            print(f"[ERROR] Could not find CSV at {csv_path}")
+            return []
+
+        # Map by exact Pokémon Name
+        data_map = {}
+        with open(csv_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                name = row["Name"].strip()
+                data_map[name] = row
+
+        # ---------------------------------------------------
+        # 3️⃣ Build real PokémonSpecies objects
+        # ---------------------------------------------------
+        species_pool = []
+
+        for name, sprites in species_dict.items():
+            if "front" not in sprites or "back" not in sprites:
+                continue
+
+            if name not in data_map:
+                print(f"[WARN] No CSV data for {name}, skipping.")
+                continue
+
+            row = data_map[name]
+
+            # Extract types
+            t1 = row["Primary Type"].strip()
+            t2 = row["Secondary Type"].strip()
+            types = [t1] if t2 == "" else [t1, t2]
+
+            # Extract stats
+            stats = {
+                "hp": int(row["Health"]),
+                "atk": int(row["Attack"]),
+                "def": int(row["Defense"]),
+                "spatk": int(row["Sp. Attack"]),
+                "spdef": int(row["Sp. Defense"]),
+                "speed": int(row["Speed"]),
+            }
+
+            # Other fields
+            generation = row["Generation"]
+            height = 1.0     # You can optionally add correct values later
+            weight = 10.0
+
+            species_pool.append(
+                PokemonSpecies(
+                    name=name,
+                    types=types,
+                    base_stats=stats,
+                    height_m=height,
+                    weight_kg=weight,
+                    pokedex_entry=f"A wild {name} appears!",
+                    front_sprite=sprites["front"],
+                    back_sprite=sprites["back"],
+                    default_ability="Unknown"
+                )
+            )
+
+        print(f"[INFO] Loaded {len(species_pool)} species with real stats & types.")
         return species_pool
+
 
     # --------------------------------------------------------
     # 🏁 Main entry
@@ -153,12 +213,17 @@ class MainMenu:
         if len(self.species_pool) < 3:
             print("[ERROR] Not enough Pokémon loaded! Check your sprite folder.")
             return []
+        
         team_species = random.sample(self.species_pool, 3)
         team = []
+
         for s in team_species:
+            species_copy = copy.deepcopy(s)   # ← ★ FIX: give each instance its own species
             moves = random.sample(self.move_pool, 2)
-            team.append(PokemonInstance(s, level=random.randint(40, 55), moves=moves))
+            team.append(PokemonInstance(species_copy, level=random.randint(40, 55), moves=moves))
+
         return team
+
 
     def _confirm_team(self, team):
         self.selected_team = team

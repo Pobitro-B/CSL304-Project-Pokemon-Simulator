@@ -96,39 +96,48 @@ class PokemonInstance:
     # -------------------------------------------------------
     # ⚔️ Battle Actions
     # -------------------------------------------------------
-    def take_damage(self, move: Move, damage: float):
-        """Handle receiving damage, considering immunities and abilities."""
-        if self.ability.on_type_immunity(self, move.move_type):
-            print(f"{self.name} is immune to {move.move_type}-type moves due to {self.ability.name}!")
-            return 0
-
-        damage = self.ability.on_damage_received(self, move, damage)
+    def take_damage(self, damage: float):
+        """Applies damage and handles fainting."""
         self.current_hp = max(0, self.current_hp - damage)
 
         if self.fainted():
             print(f"{self.name} fainted!")
+
         return damage
 
-    def attack(self, move: Move, target: "PokemonInstance", battleState):
+
+    def attack(self, move: Move, target: "PokemonInstance", battle_state):
         """Perform a move against the opponent Pokémon."""
-        #debug print(self.moves, move, self.moves[0] == move, self.moves[1] == move)
-        if move not in self.moves:
+
+        # Validate move by NAME (objects differ!)
+        if move.name not in [m.name for m in self.moves]:
             raise ValueError(f"{self.name} doesn't know {move.name}!")
-        #print("debug:", move.name, move.move_type, move.power, move.accuracy, move.category, move.pp, move.priority, move.effect, move.effect_chance, move.description)
-        # Type multiplier (handles dual-types, STAB, etc.)
-        effectiveness = get_effectiveness( move.move_type, target.types)    #debug, defender_ability=target.ability)
 
-        # Calculate damage using Move’s internal formula
-        damage = move.calculate_damage(self, target, effectiveness)
+        print(f"{self.name} used {move.name}!")
+        # Calculate type effectiveness
+        effectiveness = get_effectiveness(move.move_type, target.types)
 
-        # Apply ability-based modifications
-        damage = self.ability.on_damage_dealt(self, move, damage)
+        # Damage calculation (use Move class)
+        damage = move.calculate_damage(self, target, battle_state)
 
-        # Deal damage
-        dealt = target.take_damage(move, damage)
+        # Apply damage
+        dealt = target.take_damage(damage)
 
-        print(f"{self.name} used {move.name}! It dealt {int(dealt)} damage.")
-        return dealt
+        # Show effectiveness message
+        from core.type_effectiveness import describe_effectiveness
+        eff_msg = describe_effectiveness(effectiveness)
+        if eff_msg:
+            print(eff_msg)
+
+        print(f"It dealt {int(dealt)} damage.")
+
+        # OLD:
+        # return final_damage
+
+        # NEW:
+        return dealt, effectiveness
+
+
 
     # -------------------------------------------------------
     # ❤️ HP / Status

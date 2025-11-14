@@ -84,16 +84,9 @@ class BattleState:
             print(f"It doesn’t affect {defender.species.name} due to its ability!")
             return
 
-        # Calculate and apply damage
-        damage = attacker.calculate_damage(move, defender, battle_state=self)
-        defender.take_damage(damage)
         self.last_move = move
+        attacker.attack(move, defender, self)
 
-        print(f"It dealt {damage} damage!")
-        print(f"{defender.species.name} has {defender.current_hp}/{defender.stats['hp']} HP remaining.")
-
-        if defender.fainted():
-            print(f"{defender.species.name} fainted!")
 
     # --------------------------------------------------------
     # 🧠 TURN SIMULATION

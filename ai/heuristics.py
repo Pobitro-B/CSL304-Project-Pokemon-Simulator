@@ -1,47 +1,100 @@
 from core.battle_state import BattleState
 from core.pokemon import PokemonInstance
 
+# ai/heuristics.py
+from core.battle_state import BattleState
+from core.move import Move
+from core.type_effectiveness import get_effectiveness
+
 def evaluate_state(state: BattleState, player_is_pokemon1: bool = True) -> float:
+    """
+    Heuristic for minimax. Uses:
+      - HP difference (normalized)
+      - best expected move effectiveness (weighted by power)
+      - speed advantage
+      - simple KO threshold awareness
+    """
     if player_is_pokemon1:
-        player = state.pokemon1
-        opponent = state.pokemon2
+        me = state.pokemon1
+        opp = state.pokemon2
     else:
-        player = state.pokemon2
-        opponent = state.pokemon1
+        me = state.pokemon2
+        opp = state.pokemon1
 
-    if player.fainted() and opponent.fainted():
-        return 0
-    if player.fainted():
-        return -1000
-    if opponent.fainted():
-        return 1000
+    # Terminal handling
+    if me.fainted() and opp.fainted():
+        return 0.0
+    if me.fainted():
+        return -1000.0
+    if opp.fainted():
+        return 1000.0
 
-    player_hp_ratio = player.current_hp / player.stats["hp"]
-    opponent_hp_ratio = opponent.current_hp / opponent.stats["hp"]
-    hp_factor = (player_hp_ratio - opponent_hp_ratio) * 100
+    # --- 1) HP advantage (primary) ---
+    my_hp_ratio = (me.current_hp / me.stats["hp"]) if me.stats.get("hp", 1) else 0.0
+    opp_hp_ratio = (opp.current_hp / opp.stats["hp"]) if opp.stats.get("hp", 1) else 0.0
+    hp_score = (my_hp_ratio - opp_hp_ratio) * 120.0
 
-    atk_diff = (player.get_stat("atk") - opponent.get_stat("atk")) / 2
-    def_diff = (player.get_stat("def") - opponent.get_stat("def")) / 2
-    spatk_diff = (player.get_stat("spatk") - opponent.get_stat("spatk")) / 4
-    spdef_diff = (player.get_stat("spdef") - opponent.get_stat("spdef")) / 4
+    # --- 2) Best expected move effectiveness (weighted by power) ---
+    def best_expected_multiplier(attacker, defender):
+        best = 0.0
+        for m in getattr(attacker, "moves", []) or []:
+            mt = getattr(m, "move_type", None)
+            if not mt:
+                continue
+            # use get_effectiveness(attack_type, defender_types)
+            try:
+                eff = get_effectiveness(mt, getattr(defender.species, "types", getattr(defender, "types", [])))
+            except Exception:
+                eff = 1.0
+            # weight by power (status moves get baseline 1.0)
+            power = float(getattr(m, "power", 40) or 40)
+            score = eff * (power / 100.0)   # normalized power contribution
+            if score > best:
+                best = score
+        return best if best > 0.0 else 1.0
 
-    spd_diff = (player.get_stat("speed") - opponent.get_stat("speed")) / 3
+    my_best = best_expected_multiplier(me, opp)
+    opp_best = best_expected_multiplier(opp, me)
+    type_score = (my_best - opp_best) * 30.0   # tuned multiplier
 
-    weather_bonus = 0
-    if getattr(state, "weather", None):
-        if hasattr(player.ability, "weather"):
-            if state.weather == player.ability.weather:
-                weather_bonus += 10
-        if hasattr(opponent.ability, "weather"):
-            if state.weather == opponent.ability.weather:
-                weather_bonus -= 10
+    # --- 3) Speed advantage (who likely moves first) ---
+    speed_score = 8.0 if me.get_stat("speed") > opp.get_stat("speed") else -8.0
 
-    heuristic_score = hp_factor + atk_diff + def_diff + spd_diff + weather_bonus
+    # --- 4) KO threshold (very small boosters to prefer finishing moves) ---
+    ko_score = 0.0
+    # Estimate roughly whether any of my moves could KO opp this turn (very rough)
+    for m in getattr(me, "moves", []) or []:
+        power = float(getattr(m, "power", 40) or 40)
+        # rough expected damage proxy = power * (me.atk/opp.def) * effectiveness
+        atk = me.get_stat("atk") if getattr(m, "category", "physical") == "physical" else me.get_stat("spatk")
+        defe = opp.get_stat("def") if getattr(m, "category", "physical") == "physical" else opp.get_stat("spdef")
+        try:
+            eff = get_effectiveness(getattr(m, "move_type", ""), getattr(opp.species, "types", getattr(opp, "types", [])))
+        except Exception:
+            eff = 1.0
+        est = (power * (atk / max(1.0, defe)) * eff) / 50.0  # very rough scaling
+        if est >= opp.current_hp * 0.9:
+            ko_score += 18.0  # strong preference to take an almost-certain KO
+        elif est >= opp.current_hp * 0.5:
+            ko_score += 6.0
 
-    if hasattr(state, "field_effects"):
-        if "reflect" in state.field_effects:
-            heuristic_score += 5
-        if "light_screen" in state.field_effects:
-            heuristic_score += 5
+    # Opponent potential to KO you (penalize)
+    for m in getattr(opp, "moves", []) or []:
+        power = float(getattr(m, "power", 40) or 40)
+        atk = opp.get_stat("atk") if getattr(m, "category", "physical") == "physical" else opp.get_stat("spatk")
+        defe = me.get_stat("def") if getattr(m, "category", "physical") == "physical" else me.get_stat("spdef")
+        try:
+            eff = get_effectiveness(getattr(m, "move_type", ""), getattr(me.species, "types", getattr(me, "types", [])))
+        except Exception:
+            eff = 1.0
+        est = (power * (atk / max(1.0, defe)) * eff) / 50.0
+        if est >= me.current_hp * 0.9:
+            ko_score -= 20.0
+        elif est >= me.current_hp * 0.5:
+            ko_score -= 7.0
 
-    return heuristic_score
+    # --- 5) Compose final heuristic ---
+    score = hp_score + type_score + speed_score + ko_score
+
+    # small normalization: keep values reasonable
+    return float(score)
