@@ -75,9 +75,9 @@ class BattleLoop:
 
             action = action1 if action1.actor == pokemon else action2
             defender = (
-                self.battle_state.pokemon2
-                if pokemon == self.battle_state.pokemon1
-                else self.battle_state.pokemon1
+                self.battle_state.ai_active
+                if pokemon == self.battle_state.player_active
+                else self.battle_state.player_active
             )
 
             if defender.fainted():
@@ -113,7 +113,19 @@ class BattleLoop:
             if defender.fainted():
                 self.renderer.show_message(f"{defender.species.name} fainted!")
                 self.renderer.update_hp()
+                
+                self.battle_state.handle_faint(defender)
+                self.renderer._create_move_buttons()
+
+
+                # If no Pokémon remain, end battle
+                if self.battle_state.is_battle_over():
+                    return
+
+                # If someone was switched in, refresh HP bar
+                self.renderer.update_hp()
                 break
+
 
         self.battle_state.next_turn()
 
@@ -122,11 +134,15 @@ class BattleLoop:
     # ---------------------------------------------------
     def run(self):
         """Main battle loop."""
-        player_pokemon = self.battle_state.pokemon1
-        ai_pokemon = self.battle_state.pokemon2
+        player_pokemon = self.battle_state.player_active
+        ai_pokemon = self.battle_state.ai_active
 
-        while not player_pokemon.fainted() and not ai_pokemon.fainted():
+        while not self.battle_state.is_battle_over():
             self.renderer.update_hp()
+
+            # Refresh active Pokémon each turn (important after faint/switch)
+            player_pokemon = self.battle_state.player_active
+            ai_pokemon = self.battle_state.ai_active
 
             player_action = self.choose_player_action(player_pokemon)
             ai_action = self.choose_ai_action(ai_pokemon)
@@ -140,15 +156,16 @@ class BattleLoop:
     # END GAME DISPLAY
     # ---------------------------------------------------
     def end_battle(self):
-        p1 = self.battle_state.pokemon1
-        p2 = self.battle_state.pokemon2
+        player_lost = self.battle_state.all_fainted(self.battle_state.player_team)
+        ai_lost = self.battle_state.all_fainted(self.battle_state.ai_team)
 
-        if p1.fainted() and p2.fainted():
-            message = "It's a double knockout! The battle ends in a draw!"
-        elif p1.fainted():
-            message = f"{p2.species.name} wins the battle!"
+        if player_lost and ai_lost:
+            message = "Both teams are wiped out! It's a draw!"
+        elif player_lost:
+            message = "AI wins the battle!"
         else:
-            message = f"{p1.species.name} wins the battle!"
+            message = "You win the battle!"
+
 
         self.renderer.show_message(message)
         self.renderer.render_frame()

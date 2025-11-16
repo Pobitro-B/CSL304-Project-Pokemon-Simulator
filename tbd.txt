@@ -1,7 +1,7 @@
-Add good heuristic
 Make team of 3
 Add moves
 Integrate mcts
+user team choice
 
 Extras:
 Music, cries, expand pokemon, battle animations

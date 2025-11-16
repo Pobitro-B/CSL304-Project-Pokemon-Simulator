@@ -107,45 +107,17 @@ class GUIRendererDS:
     # Team helpers
     # --------------------------
     def _ensure_teams(self):
-        """Make sure player_team and enemy_team exist (1v1)."""
-        # player
-        if hasattr(self.battle_state, "pokemon1") and getattr(self.battle_state, "pokemon1"):
-            self.player_team = [getattr(self.battle_state, "pokemon1")]
-        elif hasattr(self.battle_state, "selected_team") and getattr(self.battle_state, "selected_team"):
-            self.player_team = [getattr(self.battle_state, "selected_team")[0]]
-        elif hasattr(self.battle_state, "player_team") and getattr(self.battle_state, "player_team"):
-            self.player_team = [getattr(self.battle_state, "player_team")[0]]
-        else:
-            raise RuntimeError("No player Pokémon found in battle_state (expected pokemon1 or selected_team).")
+        """Directly use the 3v3 teams from BattleState."""
+        self.player_team = self.battle_state.player_team
+        self.enemy_team = self.battle_state.ai_team
 
-        # enemy
-        if hasattr(self.battle_state, "pokemon2") and getattr(self.battle_state, "pokemon2"):
-            self.enemy_team = [getattr(self.battle_state, "pokemon2")]
-        elif hasattr(self.battle_state, "enemy_pokemon") and getattr(self.battle_state, "enemy_pokemon"):
-            self.enemy_team = [getattr(self.battle_state, "enemy_pokemon")]
-        elif hasattr(self.battle_state, "enemy_team") and getattr(self.battle_state, "enemy_team"):
-            self.enemy_team = [getattr(self.battle_state, "enemy_team")[0]]
-        else:
-            pool = getattr(self.battle_state, "species_pool", None) or getattr(self.battle_state, "available_species", None)
-            if not pool:
-                raise RuntimeError("No enemy Pokémon or pool found to generate one.")
-            s = random.choice(pool)
-            obj = type("SimplePI", (), {})()
-            obj.species = s
-            base_hp = int(getattr(s, "stats", {}).get("hp", 60))
-            obj.max_hp = obj.current_hp = base_hp
-            obj.level = 50
-            obj.moves = getattr(s, "default_moves", [])[:4] or []
-            self.enemy_team = [obj]
-
-        self.player_active = 0
-        self.enemy_active = 0
 
     def _get_active(self, which="player"):
+        """Return correct active Pokémon from BattleState."""
         if which == "player":
-            return self.player_team[self.player_active] if 0 <= self.player_active < len(self.player_team) else self.player_team[0]
+            return self.battle_state.player_active
         else:
-            return self.enemy_team[self.enemy_active] if 0 <= self.enemy_active < len(self.enemy_team) else self.enemy_team[0]
+            return self.battle_state.ai_active
 
     # --------------------------
     # Move buttons
@@ -344,7 +316,7 @@ class GUIRendererDS:
         Player's pill placed near bottom-left above the bottom panel.
         Enemy's pill placed near the top-right (but not overlapping HP).
         """
-        team = self.player_team if side == "player" else self.enemy_team
+        team = self.battle_state.player_team if side == "player" else self.battle_state.ai_team
         alive = sum(1 for p in team if getattr(p, "current_hp", getattr(p, "max_hp", 1)) > 0)
         total = len(team)
         size = 18

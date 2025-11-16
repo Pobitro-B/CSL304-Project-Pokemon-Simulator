@@ -9,12 +9,12 @@ def _simulate_two_moves(state, move_a, move_b):
         if attacker.fainted():
             continue
 
-        if attacker is state.pokemon1:
+        if attacker is state.player_active:
             move = move_a
-            defender = state.pokemon2
+            defender = state.ai_active
         else:
             move = move_b
-            defender = state.pokemon1
+            defender = state.player_active
 
         if move is None:
             continue
@@ -36,16 +36,16 @@ def _simulate_two_moves(state, move_a, move_b):
                 pass
 
 def minimax(state, depth, alpha, beta, maximizing_player, player_is_pokemon1=True):
-    if depth == 0 or state.pokemon1.fainted() or state.pokemon2.fainted():
+    if depth == 0 or state.player_active.fainted() or state.ai_active.fainted():
         score = evaluate_state(state, player_is_pokemon1)
         return score, None
 
     if maximizing_player:
-        our_pokemon = state.pokemon1 if player_is_pokemon1 else state.pokemon2
-        opp_pokemon = state.pokemon2 if player_is_pokemon1 else state.pokemon1
+        our_pokemon = state.player_active if player_is_pokemon1 else state.ai_active
+        opp_pokemon = state.ai_active if player_is_pokemon1 else state.player_active
     else:
-        our_pokemon = state.pokemon2 if player_is_pokemon1 else state.pokemon1
-        opp_pokemon = state.pokemon1 if player_is_pokemon1 else state.pokemon2
+        our_pokemon = state.ai_active if player_is_pokemon1 else state.player_active
+        opp_pokemon = state.player_active if player_is_pokemon1 else state.ai_active
 
     best_move = None
 
