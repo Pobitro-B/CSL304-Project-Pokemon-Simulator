@@ -1,7 +1,6 @@
-Make team of 3
-Add moves
 Integrate mcts
 user team choice
+ui improvements
 
 Extras:
-Music, cries, expand pokemon, battle animations
+cries, battle animations

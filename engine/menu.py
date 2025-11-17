@@ -6,6 +6,8 @@ from core.pokemon import PokemonInstance, PokemonSpecies
 from core.move import Move
 import copy
 import csv
+from data.movesets import MOVE_POOL
+from data.move_metadata import MOVE_METADATA
 
 class MainMenu:
     def __init__(self):
@@ -36,6 +38,30 @@ class MainMenu:
     # --------------------------------------------------------
     # 🧩 Load Pokémon from sprite folder
     # --------------------------------------------------------  
+
+
+    def load_moves_for(self, species_name):
+        """Return 4 full Move objects for the given Pokémon species."""
+        move_names = MOVE_POOL.get(species_name, [])
+        moves = []
+
+        for name in move_names:
+            meta = MOVE_METADATA.get(name)
+            if not meta:
+                print(f"[WARN] Missing metadata for {name} (species {species_name})")
+                continue
+
+            move = Move(
+                name=name,
+                move_type=meta["MoveType"],
+                power=meta["Power"],
+                accuracy=meta["Accuracy"],
+                category=meta["Category"]
+            )
+            moves.append(move)
+
+        return moves
+
 
     def _load_species_from_sprites(self):
         if not os.path.exists(self.sprite_dir):
@@ -219,8 +245,18 @@ class MainMenu:
 
         for s in team_species:
             species_copy = copy.deepcopy(s)   # ← ★ FIX: give each instance its own species
-            moves = random.sample(self.move_pool, 2)
-            team.append(PokemonInstance(species_copy, level=random.randint(40, 55), moves=moves))
+            moves = self.load_moves_for(species_copy.name)
+            if len(moves) < 4:
+                print(f"[WARN] {species_copy.name} has fewer than 4 valid moves.")
+                
+            team.append(
+                PokemonInstance(
+                    species_copy,
+                    level=random.randint(40, 55),
+                    moves=moves  # now real metadata moves
+                )
+            )
+
 
         return team
 

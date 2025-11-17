@@ -79,5 +79,3 @@ def describe_effectiveness(multiplier: float) -> str:
         return "It's not very effective..."
     else:
         return ""
-    
-print(describe_effectiveness(0))
