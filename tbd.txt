@@ -1,6 +1,0 @@
-Integrate mcts
-user team choice
-ui improvements
-
-Extras:
-cries, battle animations
