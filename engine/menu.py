@@ -35,6 +35,23 @@ class MainMenu:
         self.species_pool = self._load_species_from_sprites()
         print(f"[INFO] Loaded {len(self.species_pool)} Pokémon species.")
 
+                # === Load background + title images (with fallback) ===
+        self.menu_bg = None
+        self.title_img = None
+
+        try:
+            bg = Image.open("menu_bg.png").resize((900, 650))
+            self.menu_bg = ImageTk.PhotoImage(bg)
+        except:
+            print("[WARN] menu_bg.png missing, using fallback color.")
+
+        try:
+            title = Image.open("text.png")
+            self.title_img = ImageTk.PhotoImage(title)
+        except:
+            print("[WARN] text.png missing, using text fallback.")
+
+
     # --------------------------------------------------------
     # 🧩 Load Pokémon from sprite folder
     # --------------------------------------------------------  
@@ -173,21 +190,52 @@ class MainMenu:
     def _show_start_screen(self):
         self.clear_window()
 
-        title = tk.Label(self.root, text="POKÉMON BATTLE", font=("Arial", 36, "bold"), bg="#d8e2f3")
-        title.pack(pady=100)
+        # -----------------------------------------------------
+        # Background Layer
+        # -----------------------------------------------------
+        if self.menu_bg:
+            bg_label = tk.Label(self.root, image=self.menu_bg)
+            bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        else:
+            self.root.configure(bg="#d8e2f3")
 
+        # -----------------------------------------------------
+        # Title (image or fallback text)
+        # -----------------------------------------------------
+        if self.title_img:
+            title_label = tk.Label(self.root, image=self.title_img, borderwidth=0, highlightthickness=0)
+            title_label.image = self.title_img  # prevent GC
+            title_label.pack(pady=80)
+        else:
+            title = tk.Label(self.root, text="POKÉMON BATTLE",
+                             font=("Arial", 36, "bold"), bg="#d8e2f3")
+            title.pack(pady=100)
+
+        # -----------------------------------------------------
+        # Start Button
+        # -----------------------------------------------------
         start_btn = tk.Button(
-            self.root, text="Start Battle", font=("Arial", 16, "bold"),
-            bg="#feca57", activebackground="#ff9f43",
+            self.root,
+            text="Start Battle",
+            font=("Arial", 16, "bold"),
+            bg="#feca57",
+            activebackground="#ff9f43",
             command=self._show_team_selection
         )
         start_btn.pack(pady=30)
 
+        # -----------------------------------------------------
+        # Exit Button
+        # -----------------------------------------------------
         exit_btn = tk.Button(
-            self.root, text="Exit", font=("Arial", 14),
-            bg="#c8d6e5", command=self.root.destroy
+            self.root,
+            text="Exit",
+            font=("Arial", 14),
+            bg="#c8d6e5",
+            command=self.root.destroy
         )
         exit_btn.pack(pady=10)
+
 
     def _show_team_selection(self):
         self.clear_window()
